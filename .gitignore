@@ -1,0 +1,46 @@
+# Python / build
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+# Secrets, personal config and logs
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.log
+logs/
+secrets/
+config.local.*
+*.local.yaml
+# Models, robots and datasets
+checkpoints/
+weights/
+datasets/
+recordings/
+*.bag
+*.db3
+*.mcap
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.onnx
+*.engine
+*.mlpackage/
+*.mlmodel
+# ROS
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
