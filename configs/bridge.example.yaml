@@ -1,0 +1,12 @@
+# Example only; not yet a functional ROS parameter-file contract.
+vla_bridge:
+  ros__parameters:
+    server_url: "http://127.0.0.1:8000"
+    model_id: "mock_piper"
+    task: "synthetic dry-run fixture"
+    dry_run: true
+    camera_topics: []
+    joint_state_topic: "/joint_states"
+    infer_timeout_s: 1.0
+    action_execution_horizon: 1
+    control_hz: 20.0
