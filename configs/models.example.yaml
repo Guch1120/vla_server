@@ -1,0 +1,18 @@
+# Synthetic sample only. Never interpret this as a real-robot compatible checkpoint.
+models:
+  mock_piper:
+    adapter: mock
+    checkpoint: null
+    architecture: mock
+    action_schema: mock_joint_position_v1
+    action_kind: joint_position
+    action_hz: 20
+    observation_schema: mock_observation_v1
+    joint_names: [joint_1, joint_2]
+    output_horizon: 2
+    robot_id: synthetic_fixture
+    license: internal_test_fixture
+  # act_piper_v1:
+  #   adapter: lerobot_act
+  #   checkpoint: <LOCAL_APPROVED_CHECKPOINT>
+  #   ...see docs/API_CONTRACT.md
