@@ -1,40 +1,103 @@
-"""Mock-only API. NEVER use output for real hardware."""
-from __future__ import annotations
+"""推論のみを提供し、モータへの経路を持たない。"""
+
+import threading
 import time
-from fastapi import FastAPI, HTTPException
-from .registry import REGISTRY
+from collections import OrderedDict
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from .registry import default_registry
 from .schemas import PredictRequest, PredictResponse
 
-app = FastAPI(title="vla_server", version="0.0.1")
+MAX_BODY = 5_000_000
+MAX_AGE_NS = 1_000_000_000
+FUTURE_NS = 50_000_000
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "actuation": False, "trained_models_loaded": False}
 
-@app.get("/v1/models")
-def list_models():
-    return [{"model_id": s.model_id, "adapter": s.adapter,
-             "action_schema": s.action_schema, "action_kind": s.action_kind,
-             "joint_names": list(s.joint_names), "action_hz": s.action_hz,
-             "output_horizon": s.output_horizon, "trained": False}
-            for s in REGISTRY.values()]
+def create_app(registry=None):
+    registry = registry if registry is not None else default_registry()
+    app = FastAPI(title="vla_server", version="0.1.0")
+    app.state.registry = registry
+    seen = OrderedDict()
+    lock = threading.Lock()
 
-@app.post("/v1/predict", response_model=PredictResponse)
-def predict(req: PredictRequest):
-    t0 = time.perf_counter()
-    s = REGISTRY.get(req.model_id)
-    if s is None:
-        raise HTTPException(404, "unknown model_id")
-    if s.adapter != "mock":
-        raise HTTPException(503, "model adapter not implemented")
-    if tuple(req.observation.joint_names) != s.joint_names:
-        raise HTTPException(422, "joint schema mismatch")
-    # This is an intentionally inert synthetic fixture; not a learned policy.
-    return PredictResponse(
-        request_id=req.request_id, model_id=s.model_id,
-        action_schema=s.action_schema, action_kind=s.action_kind,
-        joint_names=list(s.joint_names), action_hz=s.action_hz,
-        actions=[[0.0] * len(s.joint_names) for _ in range(s.output_horizon)],
-        source_timestamp_ns=req.observation.timestamp_ns,
-        inference_ms=(time.perf_counter()-t0)*1000,
-    )
+    @app.middleware("http")
+    async def bounded_body(request: Request, call_next):
+        if request.method == "POST":
+            body = bytearray()
+            async for chunk in request.stream():
+                body.extend(chunk)
+                if len(body) > MAX_BODY:
+                    return JSONResponse(
+                        {"detail": "request too large"}, status_code=413
+                    )
+            request._body = bytes(body)
+        return await call_next(request)
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok", "actuation": False, "trained_models_loaded": False}
+
+    @app.get("/v1/models")
+    def models():
+        return [s.model_dump() for s in registry.specs.values()]
+
+    @app.post("/v1/predict", response_model=PredictResponse)
+    def predict(req: PredictRequest):
+        start = time.perf_counter()
+        spec = registry.specs.get(req.model_id)
+        if spec is None:
+            raise HTTPException(404, "unknown model_id")
+        if not spec.ready:
+            raise HTTPException(409, "model not ready")
+        obs = req.observation
+        age = time.time_ns() - obs.timestamp_ns
+        if age > MAX_AGE_NS or age < -FUTURE_NS:
+            raise HTTPException(422, "stale or future observation")
+        if obs.joint_names != spec.joint_names or list(obs.images) != spec.camera_order:
+            raise HTTPException(422, "observation schema mismatch")
+        with lock:
+            now = time.monotonic()
+            while seen and next(iter(seen.values())) < now - 60:
+                seen.popitem(last=False)
+            if req.request_id in seen:
+                raise HTTPException(409, "duplicate request_id")
+            if len(seen) >= 4096:
+                raise HTTPException(503, "request cache full")
+            seen[req.request_id] = now
+        try:
+            actions = registry.adapters[req.model_id].infer(req)
+            result = PredictResponse(
+                request_id=req.request_id,
+                model_id=spec.model_id,
+                **{
+                    k: getattr(spec, k)
+                    for k in (
+                        "action_schema",
+                        "action_kind",
+                        "unit",
+                        "frame_id",
+                        "robot_id",
+                        "joint_names",
+                        "action_hz",
+                    )
+                },
+                actions=actions,
+                source_timestamp_ns=obs.timestamp_ns,
+                generated_timestamp_ns=time.time_ns(),
+                inference_ms=(time.perf_counter() - start) * 1000,
+            )
+            if len(result.actions) != spec.output_horizon:
+                raise ValueError("horizon mismatch")
+        except (ValueError, ValidationError):
+            raise HTTPException(409, "adapter action contract violation") from None
+        except Exception:
+            raise HTTPException(503, "inference backend unavailable") from None
+        if time.time_ns() - obs.timestamp_ns > MAX_AGE_NS:
+            raise HTTPException(504, "response expired")
+        return result
+
+    return app
+
+
+app = create_app()
