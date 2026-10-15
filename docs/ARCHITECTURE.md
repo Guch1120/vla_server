@@ -68,13 +68,13 @@ Future adapters can wrap third-party policies without forking this bridge. Pass 
 ## WP01 / WP02実装範囲（2026-10-15）
 
 HTTP JSONを初期transportに採用。`Registry.register`でAdapterを明示登録し、
-`load → infer → unload`を分離する。現在の二つの登録は合成zero fixtureのみ。
+`load → infer → unload`を分離する。現在の三つの登録は合成zero fixtureのみ。
 YAMLからコードを動的importしたり、呼出側指定の重みをロードしたりしない。
 モデル固有変換はAdapter内に置く。共通画像型のRGB検査はサーバ契約の検査である。
 モデル切替・GPU排他ロード・学習済みモデルは未実装。
 
 BridgeはHumble `sensor_msgs/Image`（rgb8）と`JointState`を購読し、
-各カメラ最大8フレームと最新関節状態を用いて50ms以内の時刻整合を確認する。
+各カメラ最大8フレームと関節履歴最大32件を用いて50ms以内の時刻整合を確認する。
 カメラ順序はcamera_namesの順序で固定しRegistryと照合する。
 HTTP待機は単一workerに分離し、処理中1件＋最新待機1件に制限。
 欠測・通信失敗・期限切れで結果を破棄し、通信失敗時は待機観測も破棄する。
@@ -87,3 +87,23 @@ MoveIt ServoのJointJogとTwistStampedの使い分けは
 [Humble公式資料](https://moveit.picknik.ai/humble/doc/examples/realtime_servo/realtime_servo_tutorial.html)に従う。
 唯一の結果publisherは `~/dry_run_actions`（std_msgs/String JSON）。
 実機publisherは存在せず、dry_run=falseを拒否する。
+
+## 実行側時計とBridge変換（v0.2）
+
+時計のauthorityは実行側。simulationでは/clock、robotではロボット上のROS system clock、
+またはロボットが配信する明示clock_topicを使用する。サーバの時計を基準にはしない。
+Bridgeは取得timestamp・clock_domain・clock_epoch・実行側現在値を送信し、応答にもsource情報を保持する。
+通信期限は単調時計で測る。/clockが止まっても動くsteady timerでHOLDと受信期限を監視する。
+時計巻き戻りでは観測バッファ・旧要求世代を無効化する。
+
+Bridgeが担当するのはROSの名前対応、回転/直動の単位分離、画像encoding/transportの変換。
+モデル固有のresize/crop・プロンプト・正規化・出力逆変換はAdapterに残す。
+Piper用例はjoint1～6 radとjoint7の指変位mを分離し、joint8を独立指令としない。
+Piper ROS driverによってjoint7が全開幅mか指1本の変位mか異なるため、gripper_scaleを明示する。
+
+カメラ8件・関節32件の履歴から時刻差50ms以内の組を選ぶ。
+時計より先に来たデータも有界で保持し、受信猶予(sync_receive_age_s)で破棄する。
+websimの実測では画像が同時刻の関節より約3秒遅れて届いたため、sim例だけ受信猶予と
+clock_stall_sを5秒、QoSをreliableにした。robot既定の猶予は1秒。
+観測鮮度1秒は実行側時計、HTTP待機1秒は単調時計であり、これらを混同しない。
+CameraInfoの型と校正内容の違い、Registryの意味は `docs/CAMERA_INFO.md` を参照。

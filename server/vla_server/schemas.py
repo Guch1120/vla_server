@@ -9,6 +9,17 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
 
+ClockDomain = Literal["unix", "ros_sim", "robot"]
+
+
+class GripperState(StrictModel):
+    """指1本の変位。アーム角度や指間の全開幅と混同しない。"""
+
+    joint_name: str = Field(min_length=1, max_length=128)
+    position_m: FiniteFloat
+    calibration_id: str = Field(min_length=1, max_length=128)
+
+
 class Image(StrictModel):
     timestamp_ns: int = Field(gt=0)
     frame_id: str = Field(min_length=1, max_length=128)
@@ -31,10 +42,12 @@ class Image(StrictModel):
 
 class Observation(StrictModel):
     timestamp_ns: int = Field(gt=0)
-    clock_domain: Literal["unix"] = "unix"
+    clock_domain: ClockDomain = "unix"
+    clock_epoch: str = Field(default="unix", min_length=1, max_length=128)
     joint_names: list[str] = Field(min_length=1, max_length=64)
     joint_positions_rad: list[FiniteFloat] = Field(min_length=1, max_length=64)
     images: dict[str, Image] = Field(default_factory=dict, max_length=4)
+    gripper: GripperState | None = None
 
     @model_validator(mode="after")
     def shape(self):
@@ -58,6 +71,17 @@ class PredictRequest(StrictModel):
     observation: Observation
     task: str = Field(default="", max_length=2048)
     dry_run: Literal[True] = True
+    execution_timestamp_ns: int | None = Field(default=None, gt=0)
+    max_inference_ms: FiniteFloat = Field(default=1000.0, gt=0, le=10000)
+
+    @model_validator(mode="after")
+    def clock_reference(self):
+        if (
+            self.observation.clock_domain != "unix"
+            and self.execution_timestamp_ns is None
+        ):
+            raise ValueError("execution clock reference required")
+        return self
 
 
 class PredictResponse(StrictModel):
@@ -72,6 +96,8 @@ class PredictResponse(StrictModel):
     action_hz: FiniteFloat = Field(gt=0, le=1000)
     actions: list[list[FiniteFloat]] = Field(min_length=1, max_length=256)
     source_timestamp_ns: int = Field(gt=0)
+    source_clock_domain: ClockDomain = "unix"
+    source_clock_epoch: str = "unix"
     generated_timestamp_ns: int = Field(gt=0)
     inference_ms: FiniteFloat = Field(ge=0)
 

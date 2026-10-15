@@ -16,6 +16,7 @@ class ModelSpec(StrictModel):
     normalization_version: str = Field(min_length=1)
     observation_schema: str = Field(min_length=1)
     camera_order: list[str]
+    gripper_schema: str | None = None
     robot_id: str = Field(min_length=1)
     action_schema: str = Field(min_length=1)
     action_kind: Literal["joint_position", "joint_velocity", "ee_twist"]
@@ -111,4 +112,25 @@ def default_registry():
             output_horizon=2,
         )
         registry.register(spec, MockPolicy(spec))
+    spec = ModelSpec(
+        model_id="mock_piper_rgb6",
+        adapter="mock",
+        checkpoint="synthetic:zeros-v1",
+        license="Apache-2.0",
+        adapter_version="1",
+        preprocessing_version="rgb8-v1",
+        normalization_version="identity-v1",
+        observation_schema="piper_arm6_gripper_m_v1",
+        camera_order=["front"],
+        gripper_schema="piper_finger_displacement_m_v1",
+        robot_id="piper_arm6",
+        action_schema="piper_arm6_position_v1",
+        action_kind="joint_position",
+        unit="rad",
+        frame_id="base_link",
+        joint_names=[f"joint{i}" for i in range(1, 7)],
+        action_hz=20.0,
+        output_horizon=2,
+    )
+    registry.register(spec, MockPolicy(spec))
     return registry

@@ -1,0 +1,27 @@
+# 実機側でBridgeを実行する場合のdry-run例。実機接続・指令送信は未検証。
+vla_bridge:
+  ros__parameters:
+    server_url: "http://127.0.0.1:8000"
+    model_id: "mock_piper_rgb6"
+    task: "Piper camera transport dry-run"
+    dry_run: true
+    use_sim_time: false
+    clock_domain: "robot"
+    clock_stall_s: 1.0
+    joint_state_topic: "/joint_states"
+    joint_names: [joint1, joint2, joint3, joint4, joint5, joint6]
+    joint_source_names: [joint1, joint2, joint3, joint4, joint5, joint6]
+    gripper_joint_name: "joint7"
+    # joint7が全開幅mを出すdriverの場合。指1本の変位mを出すdriverなら1.0。
+    gripper_scale: 0.5
+    gripper_offset_m: 0.0
+    gripper_calibration_id: "piper_finger_displacement_m_v1"
+    camera_topics: ["/camera/camera/color/image_raw"]
+    camera_names: ["front"]
+    camera_calibration_ids: ["robot_camera_uncalibrated"]
+    image_transport: "raw"
+    image_qos: "best_effort"
+    infer_timeout_s: 1.0
+    # Bridgeを別PCへ置く場合は、ロボット配信のClockを明示する。
+    # clock_topic: "/robot/clock"
+    # clock_qos: "reliable"

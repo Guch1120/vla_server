@@ -108,5 +108,12 @@ WP02: Humble購読、50ms同期、上限付き非同期worker、起動launch、
 dry-run結果トピック、サーバ切断時のHOLDを実装。
 合成トピック→HTTP→dry-run ROSの往復・切断試験を追加。
 P1全体の完了は宣言しない。Controllerメッセージ/模擬endpoint、
-実機hold/E-stop/制限はWP03以降。sim time対応・実カメラ校正も未実装。
+実機hold/E-stop/制限はWP03以降。実カメラ校正は未実装。
 検証コマンド・制約は `docs/VERIFICATION.md`。
+
+### 実シミュレータ接続後の修正
+
+実行側時計domain/epochと単調時計deadlineを分離し、sim/robot双方の時計を受ける。
+Bridgeで名前順変換、アームradと指変位mの分離、raw/圧縮画像のRGB型変換を実装。
+Piper6軸＋RGB用の明示mock登録とsim/robot別パラメータ例を追加。
+CameraInfoのpublisher側エラーは参照先の問題として分離し、実校正済みとは扱わない。

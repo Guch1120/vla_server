@@ -16,7 +16,7 @@ FUTURE_NS = 50_000_000
 
 def create_app(registry=None):
     registry = registry if registry is not None else default_registry()
-    app = FastAPI(title="vla_server", version="0.1.0")
+    app = FastAPI(title="vla_server", version="0.2.0")
     app.state.registry = registry
     seen = OrderedDict()
     lock = threading.Lock()
@@ -51,11 +51,16 @@ def create_app(registry=None):
         if not spec.ready:
             raise HTTPException(409, "model not ready")
         obs = req.observation
-        age = time.time_ns() - obs.timestamp_ns
+        reference_ns = req.execution_timestamp_ns
+        if reference_ns is None:
+            reference_ns = time.time_ns()
+        age = reference_ns - obs.timestamp_ns
         if age > MAX_AGE_NS or age < -FUTURE_NS:
             raise HTTPException(422, "stale or future observation")
         if obs.joint_names != spec.joint_names or list(obs.images) != spec.camera_order:
             raise HTTPException(422, "observation schema mismatch")
+        if (obs.gripper.calibration_id if obs.gripper else None) != spec.gripper_schema:
+            raise HTTPException(422, "gripper schema mismatch")
         with lock:
             now = time.monotonic()
             while seen and next(iter(seen.values())) < now - 60:
@@ -84,6 +89,8 @@ def create_app(registry=None):
                 },
                 actions=actions,
                 source_timestamp_ns=obs.timestamp_ns,
+                source_clock_domain=obs.clock_domain,
+                source_clock_epoch=obs.clock_epoch,
                 generated_timestamp_ns=time.time_ns(),
                 inference_ms=(time.perf_counter() - start) * 1000,
             )
@@ -93,7 +100,12 @@ def create_app(registry=None):
             raise HTTPException(409, "adapter action contract violation") from None
         except Exception:
             raise HTTPException(503, "inference backend unavailable") from None
-        if time.time_ns() - obs.timestamp_ns > MAX_AGE_NS:
+        if result.inference_ms > req.max_inference_ms:
+            raise HTTPException(504, "inference deadline exceeded")
+        if (
+            req.execution_timestamp_ns is None
+            and time.time_ns() - obs.timestamp_ns > MAX_AGE_NS
+        ):
             raise HTTPException(504, "response expired")
         return result
 

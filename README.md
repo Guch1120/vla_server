@@ -55,3 +55,7 @@ No upstream code is vendored by this scaffold.
 WP01の共通API・明示Registry・合成Adapter、WP02のHumble dry-runブリッジを実装。
 学習モデルや実機制御は未実装。Docker内だけでビルド・テストする。
 コマンドと検証範囲は [検証手順](docs/VERIFICATION.md) を参照。
+
+Piperシミュレータ用のdry-run設定は [bridge.piper_sim.example.yaml](configs/bridge.piper_sim.example.yaml)。
+時計は実行側に合わせ、実機の場合はロボット側の時計を使います。
+[CameraInfoと登録モデルの説明](docs/CAMERA_INFO.md)も参照してください。

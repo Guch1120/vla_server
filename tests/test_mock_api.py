@@ -28,7 +28,7 @@ def payload(model="mock_piper"):
 def test_health_models(client):
     assert client.get("/health").json()["actuation"] is False
     models = client.get("/v1/models").json()
-    assert len(models) == 2
+    assert len(models) == 3
     assert all(
         m["checkpoint"] and m["normalization_version"] and not m["trained"]
         for m in models
@@ -151,3 +151,49 @@ def test_registry_rejects_duplicate_and_metadata_mutation():
         spec.checkpoint = "other"
     with pytest.raises(ValueError):
         registry.register(spec, registry.adapters["mock_piper"])
+
+
+@pytest.mark.parametrize("domain", ["ros_sim", "robot"])
+def test_execution_clock_is_authoritative(client, domain):
+    p = payload()
+    obs = p["observation"]
+    obs.update(
+        timestamp_ns=123_000_000_000, clock_domain=domain, clock_epoch="execution-1"
+    )
+    p["execution_timestamp_ns"] = 123_020_000_000
+    response = client.post("/v1/predict", json=p)
+    assert response.status_code == 200
+    assert response.json()["source_timestamp_ns"] == 123_000_000_000
+    assert response.json()["source_clock_domain"] == domain
+    assert response.json()["source_clock_epoch"] == "execution-1"
+    p["request_id"] = str(uuid.uuid4())
+    p["execution_timestamp_ns"] += 2_000_000_000
+    assert client.post("/v1/predict", json=p).status_code == 422
+
+
+def test_simulation_requires_clock_reference(client):
+    p = payload()
+    p["observation"]["clock_domain"] = "ros_sim"
+    assert client.post("/v1/predict", json=p).status_code == 422
+
+
+def test_execution_clock_deadline_is_monotonic(monkeypatch):
+    import vla_server.api as api
+
+    registry = default_registry()
+    p = payload()
+    p["observation"].update(timestamp_ns=100, clock_domain="ros_sim")
+    p["execution_timestamp_ns"] = 100
+    p["max_inference_ms"] = 10.0
+    ticks = [0.0]
+    original = registry.adapters["mock_piper"].infer
+
+    def delayed(req):
+        ticks[0] = 0.1
+        return original(req)
+
+    registry.adapters["mock_piper"].infer = delayed
+    monkeypatch.setattr(api.time, "perf_counter", lambda: ticks[0])
+    assert (
+        TestClient(create_app(registry)).post("/v1/predict", json=p).status_code == 504
+    )
