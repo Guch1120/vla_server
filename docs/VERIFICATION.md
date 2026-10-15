@@ -79,3 +79,10 @@ ros2 run vla_bridge bridge_node --ros-args --params-file configs/bridge.piper_si
 
 最終Docker検証: Python 3.10のみは52 passed / ROS統合1 skipped、Humbleではcolcon build成功。
 最終Humbleテストは **57 passed in 1.50s**（時計source設定の拒否検査を含む）。
+
+### CameraInfo発行側の後続修正
+
+kotyaka-websimのPiper側でK/R/P/D、描画projection、aligned depth、点群を共通profileへ統一。
+前項の「CameraInfo問題が残る」は修正前の記録。現在は各CameraInfo18件の実ROS受信と、
+RGB-D/点群の取得時刻一致、点群再投影誤差0.000019画素以下を確認済み。
+詳細はdocs/CAMERA_INFO.md。Bridgeのsim例はpiper_websim_pinhole_v1を使用する。

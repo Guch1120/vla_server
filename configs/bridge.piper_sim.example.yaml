@@ -20,7 +20,7 @@ vla_bridge:
     gripper_calibration_id: "piper_finger_displacement_m_v1"
     camera_topics: ["/camera/camera/color/image_raw"]
     camera_names: ["front"]
-    camera_calibration_ids: ["piper_websim_uncalibrated"]
+    camera_calibration_ids: ["piper_websim_pinhole_v1"]
     image_transport: "raw"
     image_qos: "reliable"
     infer_timeout_s: 1.0
