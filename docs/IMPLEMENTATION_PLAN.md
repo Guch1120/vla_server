@@ -100,6 +100,11 @@ Implement in order; each PR must contain test results, limitations, public-data 
 
 ## WP01 / WP02進捗（2026-10-15）
 
+ユーザー依頼により、学習要否を判断するためのπ₀.₅ベース推論検査を先行する。
+これはWP07の互換性・計算資源調査の一部であり、WP03の実行器やWP04のデータ契約を完了扱いにはしない。
+手順・制限は `docs/PI05_BASE_PROBE.md`。ベースの32次元行動はPiperの単位・関節対応が未定義で、
+既存制御用Registryへの登録・モータ出力は行わない。
+
 WP01: HTTP JSON暫定契約、厳密な型/画像/時刻検査、明示Registry、
 2つの合成Adapter登録、メタデータ照会、重複要求拒否、backend失敗/期限切れ検査を実装。
 P0のGateはROSなしのDocker pytestで検証する。学習済み方策は追加していない。

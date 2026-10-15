@@ -53,7 +53,9 @@ No upstream code is vendored by this scaffold.
 ## 開発と検証
 
 WP01の共通API・明示Registry・合成Adapter、WP02のHumble dry-runブリッジを実装。
-学習モデルや実機制御は未実装。Docker内だけでビルド・テストする。
+共通APIへの学習モデル接続と実機制御は未実装。Docker内だけでビルド・テストする。
+π₀.₅ベース重みの推論専用検査は [ベースモデル検査](docs/PI05_BASE_PROBE.md) を参照。
+この検査の出力にはPiperの物理単位・関節対応を付与せず、制御APIには登録しません。
 コマンドと検証範囲は [検証手順](docs/VERIFICATION.md) を参照。
 
 Piperシミュレータ用のdry-run設定は [bridge.piper_sim.example.yaml](configs/bridge.piper_sim.example.yaml)。
