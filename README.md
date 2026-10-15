@@ -56,6 +56,8 @@ WP01の共通API・明示Registry・合成Adapter、WP02のHumble dry-runブリ�
 共通APIへの学習モデル接続と実機制御は未実装。Docker内だけでビルド・テストする。
 π₀.₅ベース重みの推論専用検査は [ベースモデル検査](docs/PI05_BASE_PROBE.md) を参照。
 この検査の出力にはPiperの物理単位・関節対応を付与せず、制御APIには登録しません。
+明示opt-inの [シミュレーション動作実験](docs/PI05_SIMULATION_MOTION.md) は、
+未校正の対応を仮定した別経路でWeb MuJoCoだけを動かします。
 コマンドと検証範囲は [検証手順](docs/VERIFICATION.md) を参照。
 
 Piperシミュレータ用のdry-run設定は [bridge.piper_sim.example.yaml](configs/bridge.piper_sim.example.yaml)。

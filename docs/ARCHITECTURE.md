@@ -45,6 +45,11 @@ Record image capture timestamp, joint-state timestamp, bridge send time and resp
 
 ## Robot autonomy
 
+明示許可されたシミュレーション実験では `docs/PI05_SIMULATION_MOTION.md` の別経路を使用する。
+GPU側はネットワークなしのファイルIPC、ROS側だけが固定simトピックへ送信する。
+未校正の出力投影をモデル本来の物理単位やベンチマーク結果として扱わない。
+通常のRegistry/APIとdry-run既定値は変えない。
+
 For initial research, selected VLA alone decides task-level actions. Safety limits, kinematic interpolation, fixed low-level servo controllers and operator E-stop remain mandatory. No SAM3/Nav2/FlexBE task-planning fallback during evaluation.
 
 ## Model adapter contract
