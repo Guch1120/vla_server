@@ -1,6 +1,7 @@
 """ネットワークなしの推論側。実験用ファイルIPCのみでBridgeへ返す。"""
 
 import base64
+import argparse
 import io
 import json
 import time
@@ -8,14 +9,19 @@ from pathlib import Path
 
 import torch
 from PIL import Image
-from vla_server.pi05_probe import Pi05BaseProbe, MODEL_REVISION
-from vla_server.sim_projection import probe_state, project_chunk, SCHEMA
+from vla_server.pi05_piper_task import Pi05PiperTask, MODEL_ID, MODEL_REVISION, SCHEMA
 
-root = Path("/exchange")
+parser = argparse.ArgumentParser()
+parser.add_argument("--exchange", type=Path, default=Path("/exchange"))
+args = parser.parse_args()
+root = args.exchange
 torch.set_num_threads(4)
-probe = Pi05BaseProbe(Path("/workspace/checkpoints/pi05_base"))
+policy = Pi05PiperTask(
+    Path("/models/pi05-piper-task"),
+    Path("/workspace/checkpoints/pi05_base/paligemma_tokenizer.model"),
+)
 (root / "ready.json").write_text(
-    json.dumps({"revision": MODEL_REVISION, "schema": SCHEMA})
+    json.dumps({"model_id": MODEL_ID, "revision": MODEL_REVISION, "schema": SCHEMA, "stats_sha256": policy.stats_sha256})
 )
 seen = None
 deadline = time.monotonic() + 900
@@ -31,16 +37,17 @@ while time.monotonic() < deadline and not (root / "shutdown").exists():
     seen = obs["request_id"]
     if time.time_ns() - obs["sent_wall_ns"] > 5_000_000_000:
         continue
-    image = Image.open(io.BytesIO(base64.b64decode(obs["image_png"])))
+    ee_image = Image.open(io.BytesIO(base64.b64decode(obs["ee_image_png"])))
+    external_image = Image.open(io.BytesIO(base64.b64decode(obs["external_image_png"])))
     before = time.monotonic()
-    actions = probe.infer(image, obs["task"], probe_state(obs["positions"]), seed=7)
-    targets = project_chunk(actions.tolist(), obs["positions"])
+    targets, raw_actions = policy.infer(ee_image, external_image, obs["positions"], seed=7)
     reply = {k: obs[k] for k in ("request_id", "stamp_ns", "epoch")}
     reply.update(
         schema=SCHEMA,
         targets=targets,
         inference_s=time.monotonic() - before,
-        raw_first=actions[0].tolist(),
+        action_mode="absolute_joint_positions",
+        unclamped_first=raw_actions[0],
         model_revision=MODEL_REVISION,
     )
     (root / "response.tmp").write_text(json.dumps(reply))

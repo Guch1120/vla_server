@@ -3,7 +3,7 @@
 import math
 
 TOPIC = "/sim/piper_standalone/joint_targets"
-SCHEMA = "experimental_pi05_first7_delta_rad_finger_m_v1"
+SCHEMA = "pi05_piper_task_e_absolute_joint_positions_v1"
 LIMITS = [
     (-2.618, 2.618),
     (0, 3.14),
@@ -12,6 +12,7 @@ LIMITS = [
     (-1.22, 1.22),
     (-2.0944, 2.0944),
     (0, 0.035),
+    (-0.035, 0),
 ]
 
 
@@ -31,6 +32,20 @@ def synchronized_frame(frames, joints, clock, last_stamp):
     return None
 
 
+def synchronized_observation(ee_frames, external_frames, joints, clock, last_stamp):
+    """手首・外部視点・8関節をROS sim時刻で50ms以内に同期する。"""
+    if not clock.valid or not joints or not ee_frames or not external_frames:
+        return None
+    for ee_stamp, ee in reversed(ee_frames):
+        if ee_stamp <= last_stamp or not 0 <= clock.timestamp_ns - ee_stamp <= 1_000_000_000:
+            continue
+        ext_stamp, external = min(external_frames, key=lambda pair: abs(pair[0] - ee_stamp))
+        joint_stamp, positions = min(joints, key=lambda pair: abs(pair[0] - ee_stamp))
+        if max(abs(ext_stamp - ee_stamp), abs(joint_stamp - ee_stamp)) <= 50_000_000:
+            return ee_stamp, ee, external, positions
+    return None
+
+
 def validate_reply(reply, request, clock, elapsed_s):
     if not clock.valid or clock.domain != "ros_sim" or clock.epoch != request["epoch"]:
         raise ValueError("simulation clock changed or stalled")
@@ -47,7 +62,9 @@ def validate_reply(reply, request, clock, elapsed_s):
     if len(targets) != 50:
         raise ValueError("wrong horizon")
     for row in targets:
-        if len(row) != 7 or any(
+        if len(row) != 8:
+            raise ValueError("wrong joint dimension")
+        if any(
             type(v) not in (float, int) or not math.isfinite(v) or not lo <= v <= hi
             for v, (lo, hi) in zip(row, LIMITS)
         ):
