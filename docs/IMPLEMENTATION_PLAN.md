@@ -1,6 +1,6 @@
 # Implementation Plan — VLA-first robot policy platform
 
-Updated 2026-10-15. Status: **planning and scaffold, not production**.
+Updated 2026-10-15. Status: **WP01実装・検証済み、WP02 dry-run検証済み。実機未対応**.
 
 ## Objective and scope
 
@@ -20,18 +20,18 @@ The ROS 2 bridge selects the model at startup (future runtime switching only whi
 
 ### P0 — contracts, infrastructure, mock (first task)
 
-- [ ] Define Python API types and Protobuf/gRPC choice (JSON/HTTP mock may precede gRPC).
-- [ ] Registry entry includes immutable checkpoint identifier, action schema, observation schema, preprocessing/normalization version, model adapter and license.
-- [ ] Add synthetic *mock* adapter; strict shape/type/unit validation; predictable return data; no motor outputs.
-- [ ] Health/model introspection, request_id, observation timestamps, errors and latency fields.
-- [ ] Tests covering unknown model, stale observation, non-finite action, schema mismatch, stale response, duplicate request, oversized images and unsafe mode.
+- [x] Define Python API types and Protobuf/gRPC choice (JSON/HTTP mock may precede gRPC).
+- [x] Registry entry includes immutable checkpoint identifier, action schema, observation schema, preprocessing/normalization version, model adapter and license.
+- [x] Add synthetic *mock* adapter; strict shape/type/unit validation; predictable return data; no motor outputs.
+- [x] Health/model introspection, request_id, observation timestamps, errors and latency fields.
+- [x] Tests covering unknown model, stale observation, non-finite action, schema mismatch, stale response, duplicate request, oversized images and unsafe mode.
 - **Gate:** `pytest` passes without ROS/hardware and no request can actuate hardware.
 
 ### P1 — ROS 2 Humble bridge + controller adapters
 
-- [ ] ROS 2 Python package with a launch file and parameters `server_url`, `model_id`, `task`, camera topics, joint state topic, `dry_run=true`.
-- [ ] RGB frames and joint states aligned by timestamps; define image encoding, camera ordering and clock synchronization.
-- [ ] Async inference worker; bounded queue (drop stale frames); deadline, backpressure, server disconnect behavior.
+- [x] ROS 2 Python package with a launch file and parameters `server_url`, `model_id`, `task`, camera topics, joint state topic, `dry_run=true`.
+- [x] RGB frames and joint states aligned by timestamps; define image encoding, camera ordering and clock synchronization.
+- [x] Async inference worker; bounded queue (drop stale frames); deadline, backpressure, server disconnect behavior.
 - [ ] Controller abstraction: `JointTrajectory` for absolute joint positions; `MoveIt Servo` for correctly framed jog/twist. **Never infer action type from length.**
 - [ ] Arm stopped or held on timeout; manual enabling, E-stop and bounded position/velocity/accel per robot configuration.
 - [ ] RViz/log-only and simulated controller tests before hardware.
@@ -97,3 +97,16 @@ Start with one GPU model loaded at a time; isolate incompatible upstream stacks 
 10. **WP10:** iOS action-head serving/edge evaluation.
 
 Implement in order; each PR must contain test results, limitations, public-data review, and update the relevant docs. Do not turn on motors for a passing software test.
+
+## WP01 / WP02進捗（2026-10-15）
+
+WP01: HTTP JSON暫定契約、厳密な型/画像/時刻検査、明示Registry、
+2つの合成Adapter登録、メタデータ照会、重複要求拒否、backend失敗/期限切れ検査を実装。
+P0のGateはROSなしのDocker pytestで検証する。学習済み方策は追加していない。
+
+WP02: Humble購読、50ms同期、上限付き非同期worker、起動launch、
+dry-run結果トピック、サーバ切断時のHOLDを実装。
+合成トピック→HTTP→dry-run ROSの往復・切断試験を追加。
+P1全体の完了は宣言しない。Controllerメッセージ/模擬endpoint、
+実機hold/E-stop/制限はWP03以降。sim time対応・実カメラ校正も未実装。
+検証コマンド・制約は `docs/VERIFICATION.md`。

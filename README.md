@@ -38,16 +38,6 @@ edge/ios/                Future edge-backend contract
 tests/                   Transport and schema tests
 ```
 
-## Developer bootstrap (after dependency install)
-
-```bash
-python -m pip install -e ".[dev]"
-python -m pytest -q
-uvicorn vla_server.api:app --host 127.0.0.1 --port 8000
-```
-
-The server defaults to local-only access and dry-run examples. Use `/health` and `/v1/models` to inspect available adapters. No model can be fetched from a caller-supplied URL.
-
 ## Security and licensing
 
 Public repo: do **not** commit credentials, network details, robot camera footage, datasets, weights, identifiable objects/people, or private third-party code. Use environment variables for secrets and local private configuration. See [docs/SECURITY.md](docs/SECURITY.md). External model licenses (especially PaliGemma / π₀.₅ and Gemma-family weights) must be separately reviewed before redistribution.
@@ -59,3 +49,9 @@ Public repo: do **not** commit credentials, network details, robot camera footag
 - LeRobot async inference: https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx
 
 No upstream code is vendored by this scaffold.
+
+## 開発と検証
+
+WP01の共通API・明示Registry・合成Adapter、WP02のHumble dry-runブリッジを実装。
+学習モデルや実機制御は未実装。Docker内だけでビルド・テストする。
+コマンドと検証範囲は [検証手順](docs/VERIFICATION.md) を参照。

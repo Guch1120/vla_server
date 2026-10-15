@@ -1,18 +1,22 @@
-# Synthetic sample only. Never interpret this as a real-robot compatible checkpoint.
+# Registryメタデータ例。APIはコード内の明示Registryを使用し、このYAMLを自動読込しない。
 models:
-  mock_piper:
+  mock_rgb:
+    model_id: mock_rgb
     adapter: mock
-    checkpoint: null
-    architecture: mock
+    checkpoint: synthetic:zeros-v1
+    license: Apache-2.0
+    adapter_version: "1"
+    preprocessing_version: rgb8-v1
+    normalization_version: identity-v1
+    observation_schema: observation_v1
+    camera_order: [front]
+    robot_id: synthetic_fixture
     action_schema: mock_joint_position_v1
     action_kind: joint_position
-    action_hz: 20
-    observation_schema: mock_observation_v1
+    unit: rad
+    frame_id: synthetic_base
     joint_names: [joint_1, joint_2]
+    action_hz: 20.0
     output_horizon: 2
-    robot_id: synthetic_fixture
-    license: internal_test_fixture
-  # act_piper_v1:
-  #   adapter: lerobot_act
-  #   checkpoint: <LOCAL_APPROVED_CHECKPOINT>
-  #   ...see docs/API_CONTRACT.md
+    ready: true
+    trained: false

@@ -26,3 +26,12 @@ Pin versions and check licenses for LeRobot, OpenPI, pretrained checkpoints, Gem
 ## Before each PR
 
 Review changed and untracked files, scan for secrets, ensure fixtures are synthetic, check images/logs for identifying details, run tests, and include a short security note in PR description.
+
+## 現在のdry-run実装
+
+HTTPはdry_run=falseを拒否し、Bridgeも起動時に拒否する。
+Bridgeの出力はログ用Stringトピックのみで、モータ/Servo/trajectoryへのpublisherはない。
+HOLDはdry-run状態であり実機停止を保証する機能ではない。
+HTTP本文は5MB以下、カメラは合成テストのみ。サーバのremote公開・TLS/authは未実装。
+実験ではROS_DOMAIN_ID等で実機ROSネットワークから隔離する。
+Dockerテストはnetwork=noneで実行し、コンテナのloopbackのみを使用する。

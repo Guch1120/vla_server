@@ -1,0 +1,7 @@
+FROM piper-ros-humble-dev:latest
+USER root
+WORKDIR /workspace
+COPY . .
+RUN python3 -m pip install --no-cache-dir --upgrade pip==25.1.1 setuptools==79.0.1 && python3 -m pip install --no-cache-dir --no-build-isolation -c requirements-tested.txt ".[dev]"
+RUN /bin/bash -c 'source /opt/ros/humble/setup.bash && cd ros2_ws && if test -f install/setup.bash; then source install/setup.bash; fi && colcon build --packages-select vla_bridge'
+CMD ["bash", "-c", "source /opt/ros/humble/setup.bash && source ros2_ws/install/setup.bash && python3 -m pytest -q"]
